@@ -1,0 +1,10 @@
+# Per-user local Claude Code settings (permission allowlists, etc.)
+.claude/settings.local.json
+
+# OS
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
+*.swp
