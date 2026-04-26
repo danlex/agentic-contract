@@ -160,6 +160,16 @@ Claude fixes the bug but also "improves" the surrounding code: renames three hel
 
 ---
 
+## Live trace
+
+The loop in action — user authorizes a destructive `rm -rf` on two `/tmp/` test directories, the command runs, the Stop hook fires automatically, the `contract-judge` subagent reviews the turn against both contracts and returns **PASS**, and only then does the turn end:
+
+![contract-judge returning PASS after a sanctioned rm -rf cleanup](docs/judge-pass-example.png)
+
+That's the entire promise of the project compressed into one screenshot: nothing risky ships without a second pair of eyes.
+
+---
+
 ## Customizing
 
 The contracts are **just markdown** — edit them. Add rules that match your stack:
@@ -236,6 +246,7 @@ See `tests/README.md` for the fixture format, the schema, and known limitations 
 | `README.md` | This file. |
 | `LICENSE` | MIT. |
 | `.gitignore` | Excludes `.claude/settings.local.json` and editor cruft. |
+| `docs/judge-pass-example.png` | Screenshot used in the README's Live trace section. |
 
 ---
 
