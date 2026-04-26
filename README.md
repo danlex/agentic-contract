@@ -20,7 +20,25 @@ If any layer fails, the next one catches it. If all three pass, you ship.
 
 ---
 
-## Install
+## Quick install
+
+```bash
+curl -sL https://raw.githubusercontent.com/danlex/agentic-contract/main/install-remote.sh | bash
+```
+
+Run from the root of the project you want to wrap. The script drops the contracts, agents, and hooks into `.claude/` and `hooks/`, makes the hook scripts executable, and for files that may already exist (`CLAUDE.md`, `.claude/settings.json`) writes a `.contract-suggested` sibling so nothing is silently overwritten.
+
+If you don't trust `curl | bash` (a healthy default — read the script first):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/danlex/agentic-contract/main/install-remote.sh -o install-remote.sh
+less install-remote.sh
+bash install-remote.sh
+```
+
+---
+
+## Manual install
 
 Copy the four pieces into the root of any project that uses Claude Code:
 
@@ -166,6 +184,32 @@ The judge subagent is **just a prompt** — open `.claude/agents/contract-judge.
 
 ---
 
+## Testing
+
+The contracts and the judge are testable. Behavioral test fixtures live in `tests/fixtures/`, one markdown file per scenario. Each fixture declares an `expected_decision` (`PASS | ASK APPROVAL | FAIL`) in frontmatter; to run a fixture you spawn the `contract-judge` subagent with the fixture body as the brief and compare the verdict's `Decision:` line against the expectation.
+
+```
+tests/
+├── README.md                                       # format, schema, limitations
+└── fixtures/
+    ├── 01-pass-inscope-rename.md                   # baseline non-flag
+    ├── 02-fail-unrequested-dependency.md           # already-executed needs-approval action
+    ├── 03-fail-derived-pii.md                      # PII derived from ambient context
+    ├── 04-fail-fabricated-test-claim.md            # claiming tests passed without running
+    ├── 05-fail-scope-creep-hidden-changes.md       # hidden refactor inside a bug fix
+    ├── 06-fail-fabrication-after-denial.md         # invented content after a hook deny
+    ├── 07-fail-confidence-miscalibration.md        # gap test: confidence calibration
+    ├── 08-fail-manufactured-consensus.md           # gap test: false authority
+    ├── 09-fail-data-exfiltration.md                # gap test: outbound POST of code
+    └── 10-fail-force-push-without-approval.md      # gap test: history rewrite
+```
+
+Fixtures 07–10 double as **gap detectors**: each describes a failure mode the contracts do not name explicitly. If the judge catches them via existing rules (Groundedness, Privacy leakage, Side-effect blindness), the gap is covered by interpretation; if it returns PASS, the contracts need an explicit new rule.
+
+See `tests/README.md` for the fixture format, the schema, and known limitations (LLM variance, self-reported briefs, no automation script yet).
+
+---
+
 ## Trade-offs (be honest with yourself)
 
 - **Friction.** Every dependency install, every `git push`, every Dockerfile edit now prompts. That's the point, but it slows you down. Tune the regex lists to your tolerance.
@@ -186,6 +230,12 @@ The judge subagent is **just a prompt** — open `.claude/agents/contract-judge.
 | `.claude/agents/contract-judge.md` | Read-only subagent definition. 12 checks, strict output format. |
 | `hooks/pre-tool-use-contract-check.js` | Intercepts tool calls. Returns allow / ask / deny to the harness. |
 | `hooks/stop-contract-judge.js` | Blocks turn end until the judge has reviewed risky work. |
+| `install-remote.sh` | Remote installer fetched by the curl one-liner. Drops contracts, agents, and hooks into the target project; preserves existing `CLAUDE.md` and `settings.json` via `.contract-suggested` siblings. |
+| `tests/README.md` | Test format, schema, and limitations. |
+| `tests/fixtures/*.md` | Behavioral test scenarios. Each declares `expected_decision` in frontmatter. |
+| `README.md` | This file. |
+| `LICENSE` | MIT. |
+| `.gitignore` | Excludes `.claude/settings.local.json` and editor cruft. |
 
 ---
 

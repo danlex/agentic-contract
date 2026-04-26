@@ -70,3 +70,13 @@ Recovery:
 - If PASS, write: Continue.
 - If ASK APPROVAL, state the approval needed.
 - If FAIL, state what must be corrected before final delivery.
+
+## Verdict semantics for already-executed actions
+
+If a "Needs approval" action from coding.md has ALREADY been executed without prior approval, the verdict is FAIL (with recovery), not ASK APPROVAL.
+
+ASK APPROVAL is reserved for actions Claude is about to take but has not yet executed. Once a violation has occurred, the contract has been broken — recovery requires correction (revert, disclose, re-do with approval), not just retroactive permission.
+
+Use ASK APPROVAL only when:
+- Claude is proposing a risky action and pausing for approval before executing it, OR
+- The action is reversible AND the user can still meaningfully grant or deny approval (e.g. a draft message not yet sent, a commit not yet pushed).
