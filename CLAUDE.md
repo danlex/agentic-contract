@@ -9,6 +9,8 @@ This project uses three Agentic Contracts:
 Before risky work, Claude must read and apply the Coding Contract.
 Before final delivery, Claude must apply the Ethics Contract and User Rules.
 
+Each contract is versioned and uses stable per-rule IDs (`COD-A/N/F-NN`, `ETH-G/R/S/B/P-NN`, `USR-NNN`) and RFC 2119 normative keywords (MUST, MUST NOT, SHOULD, SHOULD NOT, MAY — only when ALL CAPS). On conflict between two contracts, the stricter rule prevails. `user-rules.md` may extend (never relax) `coding.md` or `ethics.md`.
+
 Risky work includes:
 - deleting files
 - installing, removing or upgrading dependencies

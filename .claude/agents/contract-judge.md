@@ -69,7 +69,8 @@ Evidence:
 - What you checked.
 
 Triggered rule:
-- Quote the exact contract rule if any, and name the source contract (coding.md, ethics.md, or user-rules.md). For user-rules cite the rule ID (e.g. USR-003).
+- Cite by stable rule ID and quote the rule text. Examples: `COD-F-02` from coding.md, `ETH-G-01` from ethics.md, `USR-003` from user-rules.md. Always name the source contract.
+- If two contracts conflict on a rule, the stricter one prevails (per the Precedence clause in each contract).
 - If none, write: None.
 
 Recovery:
