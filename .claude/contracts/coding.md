@@ -1,8 +1,9 @@
-# Coding Contract
+# Schedule A — Coding Contract
 
-**Version:** 1.0
-**Last updated:** 2026-05-09
-**Precedence:** This contract governs operational tool calls and code changes. On conflict with `ethics.md`, the stricter rule prevails. `user-rules.md` may extend (never relax) the rules below.
+**Version:** 1.1
+**Last updated:** 2026-05-10
+**Subordinate to:** `master.md` (Master Agreement). This Schedule defines operational rules; the Master governs parties, term, acceptance, enforcement, breach, and amendment.
+**Precedence:** On conflict with Schedule B (`ethics.md`), the stricter rule prevails. Schedule C (`user-rules.md`) may extend (never relax) the rules below. The Master prevails on meta-clauses.
 
 ## 1. Scope
 
@@ -59,4 +60,5 @@ These actions MUST NOT be performed under any circumstance.
 
 ## 7. Changelog
 
+- **1.1** (2026-05-10) — Relabeled as Schedule A of the Master Agreement (`master.md`). Added Subordinate-to clause in the header. No operational rules changed.
 - **1.0** (2026-05-09) — Restructured with stable rule IDs (`COD-A/N/F-NN`), RFC 2119 keywords, Scope, Definitions, Precedence clause, and tiered Recovery table. Behavior preserved from prior unversioned form; every previous rule maps 1:1 to a new ID.

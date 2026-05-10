@@ -5,11 +5,13 @@
 #
 # Run from the root of the project you want to wrap. The script:
 #   - Creates .claude/contracts/, .claude/agents/, and hooks/ if they don't exist.
-#   - Downloads the contracts, the contract-judge subagent, and both hook scripts.
+#   - Downloads the subagent definitions and hook scripts (overwriting existing
+#     copies — they are code-like, treat as library updates).
+#   - For policy files (CLAUDE.md, .claude/settings.json, and the four contracts),
+#     writes a *.contract-suggested sibling instead of overwriting, so user
+#     customizations and accumulated user-rules.md entries are never silently
+#     replaced. Merge by hand.
 #   - Makes the hook scripts executable.
-#   - For CLAUDE.md and .claude/settings.json, if a file already exists, the
-#     contract version is written to a sibling with a `.contract-suggested`
-#     suffix so nothing is silently overwritten — merge by hand.
 
 set -euo pipefail
 
@@ -37,13 +39,14 @@ say "  target directory: $(pwd)"
 
 mkdir -p .claude/contracts .claude/agents hooks
 
-# Files that are unique to the contract — safe to overwrite.
+# Code-like files (subagent definitions, hook scripts). Upgraded in place.
+# If you customize regexes or check lists, re-apply them after each update.
 OVERWRITE_FILES=(
-  ".claude/contracts/coding.md"
-  ".claude/contracts/ethics.md"
   ".claude/agents/contract-judge.md"
+  ".claude/agents/contract-keeper.md"
   "hooks/pre-tool-use-contract-check.js"
   "hooks/stop-contract-judge.js"
+  "hooks/stop-contract-keeper.js"
 )
 
 for f in "${OVERWRITE_FILES[@]}"; do
@@ -51,10 +54,17 @@ for f in "${OVERWRITE_FILES[@]}"; do
   curl -fsSL "${BASE}/${f}" -o "${f}"
 done
 
-# Files that may conflict — never silently overwrite.
+# Policy files. Never silently overwritten — existing files are preserved and
+# the upstream copy is written as a *.contract-suggested sibling for manual
+# merge. This is critical for user-rules.md (your accumulated USR-NNN rules)
+# and for any contract you've customized.
 MERGE_FILES=(
   "CLAUDE.md"
   ".claude/settings.json"
+  ".claude/contracts/master.md"
+  ".claude/contracts/coding.md"
+  ".claude/contracts/ethics.md"
+  ".claude/contracts/user-rules.md"
 )
 
 WROTE_SUGGESTED=0
@@ -70,20 +80,23 @@ for f in "${MERGE_FILES[@]}"; do
   fi
 done
 
-chmod +x hooks/pre-tool-use-contract-check.js hooks/stop-contract-judge.js
+chmod +x hooks/pre-tool-use-contract-check.js hooks/stop-contract-judge.js hooks/stop-contract-keeper.js
 
 say ""
 say "✓ Agentic Contract installed."
 say ""
 say "Next steps:"
-say "  1. Read .claude/contracts/coding.md and .claude/contracts/ethics.md."
+say "  1. Read .claude/contracts/master.md and the Schedules (coding.md, ethics.md)."
 say "     Tighten the rules for your stack — these are deliberately generic."
 if [ "${WROTE_SUGGESTED}" = "1" ]; then
-  say "  2. Merge any *.contract-suggested files into your existing CLAUDE.md /"
-  say "     .claude/settings.json. The hooks block in settings.json is the"
-  say "     load-bearing bit — without it, the PreToolUse and Stop hooks won't run."
+  say "  2. Existing files were preserved; upstream copies were written as"
+  say "     *.contract-suggested siblings. Diff each one against its sibling"
+  say "     and merge by hand. user-rules.md is your accumulated rule store —"
+  say "     never replace it without copying your USR-NNN entries forward."
+  say "     The hooks block in settings.json is load-bearing — without it,"
+  say "     the PreToolUse and Stop hooks won't run."
 fi
 say "  3. Restart any running Claude Code session in this directory so the"
-say "     new hooks and subagent are picked up."
+say "     new hooks and subagents are picked up."
 say ""
 say "Docs: https://github.com/${REPO}"

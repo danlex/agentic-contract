@@ -20,13 +20,45 @@ If any layer fails, the next one catches it. If all three pass, you ship.
 
 ---
 
+## Contract structure
+
+The contract is structured as a **Master Agreement with three Schedules**, in the style of a B2B master service agreement:
+
+```
+.claude/contracts/
+├── master.md          # Master Agreement — parties, term, acceptance, enforcement, breach, amendment
+├── coding.md          # Schedule A — operational rules (Allowed / Needs approval / Forbidden)
+├── ethics.md          # Schedule B — final-delivery standards (groundedness, sycophancy, etc.)
+└── user-rules.md      # Schedule C — project-specific rules captured via contract-keeper
+```
+
+The **Master** defines:
+
+- **Parties & roles** — Principal (User), Agent (Claude), Auditor (`contract-judge`), Registrar (`contract-keeper`), Harness (the runtime).
+- **Acceptance** — the Agent accepts by reading `CLAUDE.md` at session start; the Principal accepts by installing the contract files. Acceptance is per-session and renews automatically. Citation of a rule ID in reasoning is the operative form of acknowledgment.
+- **Term & termination** — binds for the duration of any session in a project containing the contract files; terminates on file removal, explicit revocation, or project deletion. Termination does not retroactively cure prior breaches.
+- **Mutual obligations** — Agent duties (read schedules, self-classify, cite rules, disclose breaches, refuse forbidden) and Principal duties (give explicit unambiguous approvals, treat approvals as per-action and per-scope, route standing approvals through the Registrar).
+- **Approval mechanism** — what counts as approval (explicit, named, current-session) and what doesn't (silence, generic affirmations, prior-session approvals); ambiguity is treated as denial.
+- **Enforcement** — three layers (self-enforcement, PreToolUse hook, Stop hook + Auditor) plus an audit trail (transcript, changelogs, optional hook-failure log). Each layer is independent so single-layer failure does not produce uncaught breaches.
+- **Breach & recovery** — pre-execution breaches are blocked (no breach); in-flight breaches require disclose + revert; final-delivery breaches are caught by the Auditor; post-delivery breaches are FAIL retroactively. **Retroactive permission does not heal an already-executed Needs-approval breach.**
+- **Amendments** — Master and Schedules A/B amended by direct edit + version bump; Schedule C amended only via the Registrar workflow with explicit Principal approval.
+- **Precedence** — Master prevails on meta-clauses; stricter Schedule rule prevails on operational conflicts; Schedule C may extend but not relax Schedules A/B.
+- **Severability & fail-open** — invalidity of any one rule or hook does not invalidate the rest; hooks exit 0 on internal error so a buggy hook cannot lock the user out, but fail-open is a tradeoff, not a waiver.
+- **Limitation of liability** — technical control document, not a legally enforceable commercial agreement; recovery is operational only.
+
+The **Schedules** are flat lists of operational rules with stable IDs, RFC 2119 keywords, and per-Schedule Scope / Definitions / Recovery / Changelog. The Auditor cites Schedule rules by ID (`COD-A-01`, `ETH-G-01`, `USR-003`) and Master rules by section number (`Master §7.1.4`).
+
+Stylistically the document is closer to a **B2C ToS in form** (asymmetric, drafter-imposed, click-wrap-style acceptance) and an **RFC in drafting style** (RFC 2119 keywords, stable rule IDs, versioning), with **self-executing technical enforcement** via hooks. See `master.md` for the full text.
+
+---
+
 ## Quick install
 
 ```bash
 curl -sL https://raw.githubusercontent.com/danlex/agentic-contract/main/install-remote.sh | bash
 ```
 
-Run from the root of the project you want to wrap. The script drops the contracts, agents, and hooks into `.claude/` and `hooks/`, makes the hook scripts executable, and for files that may already exist (`CLAUDE.md`, `.claude/settings.json`) writes a `.contract-suggested` sibling so nothing is silently overwritten.
+Run from the root of the project you want to wrap. The script drops the subagent definitions and hooks into `.claude/agents/` and `hooks/` (overwriting existing copies — they are code-like, treat as library updates) and makes the hooks executable. For **policy files** (`CLAUDE.md`, `.claude/settings.json`, and the four contracts under `.claude/contracts/`) it writes a `.contract-suggested` sibling instead of overwriting, so customizations and accumulated `USR-NNN` rules in `user-rules.md` are never silently replaced — merge by hand.
 
 If you don't trust `curl | bash` (a healthy default — read the script first):
 
@@ -44,23 +76,27 @@ Copy the four pieces into the root of any project that uses Claude Code:
 
 ```
 your-project/
-├── CLAUDE.md                          # tells Claude the contracts exist
+├── CLAUDE.md                          # tells Claude the contract exists
 ├── .claude/
 │   ├── settings.json                  # registers the hooks
 │   ├── contracts/
-│   │   ├── coding.md                  # operational rules
-│   │   └── ethics.md                  # EthicalHive-style checks
+│   │   ├── master.md                  # Master Agreement
+│   │   ├── coding.md                  # Schedule A — operational rules
+│   │   ├── ethics.md                  # Schedule B — final-delivery checks
+│   │   └── user-rules.md              # Schedule C — project-specific rules (starts empty)
 │   └── agents/
-│       └── contract-judge.md          # read-only review subagent
+│       ├── contract-judge.md          # Auditor — read-only review
+│       └── contract-keeper.md         # Registrar — read-only rule drafter
 └── hooks/
     ├── pre-tool-use-contract-check.js
-    └── stop-contract-judge.js
+    ├── stop-contract-judge.js
+    └── stop-contract-keeper.js
 ```
 
 Make the hooks executable:
 
 ```bash
-chmod +x hooks/pre-tool-use-contract-check.js hooks/stop-contract-judge.js
+chmod +x hooks/pre-tool-use-contract-check.js hooks/stop-contract-judge.js hooks/stop-contract-keeper.js
 ```
 
 That's it. The next Claude Code session in this directory picks them up automatically.
@@ -71,11 +107,15 @@ That's it. The next Claude Code session in this directory picks them up automati
 
 ### Layer 1 — The contracts
 
-**`coding.md`** classifies every action as Allowed, Needs approval, or Forbidden. Reading files and editing in-scope code is allowed. Installing dependencies, running migrations, deploying, broad refactors → needs approval. Modifying secrets, claiming unrun tests passed, inventing file paths → forbidden.
+**`master.md`** (Master Agreement) defines parties, term, acceptance, enforcement, breach, amendment, severability. It governs the meta-clauses; the Schedules below define operational rules.
 
-**`ethics.md`** adds the soft failure modes that don't show up in a tool call but do show up in the final answer: groundedness, sycophancy, confirmation bias, anchoring, scope creep, side-effect blindness, privacy leakage, honest final communication.
+**Schedule A — `coding.md`** classifies every action as Allowed, Needs approval, or Forbidden. Reading files and editing in-scope code is allowed. Installing dependencies, running migrations, deploying, broad refactors → needs approval. Modifying secrets, claiming unrun tests passed, inventing file paths → forbidden.
 
-`CLAUDE.md` tells Claude to consult both before risky work and before delivery.
+**Schedule B — `ethics.md`** adds the soft failure modes that don't show up in a tool call but do show up in the final answer: groundedness, sycophancy, confirmation bias, anchoring, scope creep, side-effect blindness, privacy leakage, honest final communication.
+
+**Schedule C — `user-rules.md`** holds project-specific rules captured via the Registrar workflow. Starts empty.
+
+`CLAUDE.md` tells Claude to consult the Master and the Schedules before risky work and before delivery.
 
 ### Layer 2 — PreToolUse hook
 
@@ -196,11 +236,15 @@ The judge subagent is **just a prompt** — open `.claude/agents/contract-judge.
 
 ## Testing
 
-The contracts and the judge are testable. Behavioral test fixtures live in `tests/fixtures/`, one markdown file per scenario. Each fixture declares an `expected_decision` (`PASS | ASK APPROVAL | FAIL`) in frontmatter; to run a fixture you spawn the `contract-judge` subagent with the fixture body as the brief and compare the verdict's `Decision:` line against the expectation.
+Two test suites:
+
+1. **Automated installer + hook tests** (`tests/run-tests.sh`) — 37 deterministic assertions, no LLM. Run with `bash tests/run-tests.sh`. Self-contained, exits non-zero on any regression.
+2. **Behavioral judge fixtures** (`tests/fixtures/*.md`) — non-deterministic LLM tests where the `contract-judge` subagent is spawned per fixture and its verdict is compared against `expected_decision` in frontmatter.
 
 ```
 tests/
-├── README.md                                       # format, schema, limitations
+├── README.md                                       # both suites — coverage, format, limitations
+├── run-tests.sh                                    # automated harness (installer + hook regex + Stop hooks)
 └── fixtures/
     ├── 01-pass-inscope-rename.md                   # baseline non-flag
     ├── 02-fail-unrequested-dependency.md           # already-executed needs-approval action
@@ -216,7 +260,7 @@ tests/
 
 Fixtures 07–10 double as **gap detectors**: each describes a failure mode the contracts do not name explicitly. If the judge catches them via existing rules (Groundedness, Privacy leakage, Side-effect blindness), the gap is covered by interpretation; if it returns PASS, the contracts need an explicit new rule.
 
-See `tests/README.md` for the fixture format, the schema, and known limitations (LLM variance, self-reported briefs, no automation script yet).
+See `tests/README.md` for both suites' coverage, format, and known limitations.
 
 ---
 
@@ -233,15 +277,20 @@ See `tests/README.md` for the fixture format, the schema, and known limitations 
 
 | Path | Role |
 |---|---|
-| `CLAUDE.md` | Project instructions Claude reads on startup. Names the contracts and the judge. |
-| `.claude/settings.json` | Registers the two hooks against `PreToolUse` and `Stop` events. |
-| `.claude/contracts/coding.md` | Operational rules. Three buckets: Allowed / Needs approval / Forbidden. |
-| `.claude/contracts/ethics.md` | EthicalHive-style review checklist for the final answer. |
-| `.claude/agents/contract-judge.md` | Read-only subagent definition. 12 checks, strict output format. |
+| `CLAUDE.md` | Project instructions Claude reads on startup. Names the Master, the Schedules, the Auditor, and the Registrar. |
+| `.claude/settings.json` | Registers the PreToolUse hook and both Stop hooks. |
+| `.claude/contracts/master.md` | **Master Agreement.** Parties, term, acceptance, enforcement, breach, amendment, severability. |
+| `.claude/contracts/coding.md` | **Schedule A — Coding Contract.** Operational rules. Allowed / Needs approval / Forbidden. |
+| `.claude/contracts/ethics.md` | **Schedule B — Ethics Contract.** EthicalHive-style review checklist for the final answer. |
+| `.claude/contracts/user-rules.md` | **Schedule C — User Rules.** Project-specific rules, populated via the Registrar workflow. Starts empty. |
+| `.claude/agents/contract-judge.md` | **Auditor.** Read-only subagent. 13 checks across Master + Schedules, strict output format. |
+| `.claude/agents/contract-keeper.md` | **Registrar.** Read-only subagent. Drafts Schedule C rule candidates from explicit user triggers. |
 | `hooks/pre-tool-use-contract-check.js` | Intercepts tool calls. Returns allow / ask / deny to the harness. |
-| `hooks/stop-contract-judge.js` | Blocks turn end until the judge has reviewed risky work. |
+| `hooks/stop-contract-judge.js` | Blocks turn end until the Auditor has reviewed risky work. |
+| `hooks/stop-contract-keeper.js` | Blocks turn end when the user issues an explicit rule-capture trigger, until the Registrar has drafted a candidate. |
 | `install-remote.sh` | Remote installer fetched by the curl one-liner. Drops contracts, agents, and hooks into the target project; preserves existing `CLAUDE.md` and `settings.json` via `.contract-suggested` siblings. |
-| `tests/README.md` | Test format, schema, and limitations. |
+| `tests/README.md` | Documents both test suites — coverage, format, limitations. |
+| `tests/run-tests.sh` | Automated test harness — installer behaviour, PreToolUse hook regex coverage, Stop hooks fail-open. 37 deterministic assertions. |
 | `tests/fixtures/*.md` | Behavioral test scenarios. Each declares `expected_decision` in frontmatter. |
 | `README.md` | This file. |
 | `LICENSE` | MIT. |

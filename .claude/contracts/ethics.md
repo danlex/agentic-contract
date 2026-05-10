@@ -1,8 +1,9 @@
-# Ethics Contract
+# Schedule B — Ethics Contract
 
-**Version:** 1.0
-**Last updated:** 2026-05-09
-**Precedence:** This contract governs the honesty and calibration of Claude's final answer. On conflict with `coding.md`, the stricter rule prevails. `user-rules.md` may extend (never relax) the rules below.
+**Version:** 1.1
+**Last updated:** 2026-05-10
+**Subordinate to:** `master.md` (Master Agreement). This Schedule defines final-delivery standards; the Master governs parties, term, acceptance, enforcement, breach, and amendment.
+**Precedence:** On conflict with Schedule A (`coding.md`), the stricter rule prevails. Schedule C (`user-rules.md`) may extend (never relax) the rules below. The Master prevails on meta-clauses.
 
 ## 1. Scope
 
@@ -59,4 +60,5 @@ Each numbered rule below MUST hold at final delivery.
 
 ## 5. Changelog
 
+- **1.1** (2026-05-10) — Relabeled as Schedule B of the Master Agreement (`master.md`). Added Subordinate-to clause in the header. No operational rules changed.
 - **1.0** (2026-05-09) — Restructured with stable rule IDs (`ETH-G/R/S/B/P-NN`), RFC 2119 keywords, Scope, Definitions, grouped categories, and tiered Recovery table. Behavior preserved from prior unversioned form; every previous check maps 1:1 to a new ID.
